@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p}}
+    <button type="submit">Confirmar</button>
+  </form>
+  <p>Need a new OTP Code?</p><a href="{% url 'resend_code' %}">Resend Code</a>
+{% endblock content %}

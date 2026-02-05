@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <form method="post">
+    {% csrf_token %}
+    {{ forms.non_field_errors }}
+    {{ form.as_p}}
+    <ul>
+      {% for rule in password_rules %}
+      <li>{{ rule }}</li>
+      {% endfor %}
+    </ul>
+      
+    <button type="submit">
+      Confirmar
+    </button>
+  </form>
+{% endblock content %}
