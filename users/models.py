@@ -30,59 +30,32 @@ class OtpToken(models.Model):
     otp_created_at = models.DateTimeField(auto_now_add=True)
     otp_expires_at = models.DateTimeField(blank=True, null=True)
 
-    def create_new_opt_code(self):
-        if self.otp_expires_at < timezone.now():
-            OtpToken.objects.create(user=self.user, otp_expires_at=timezone.now() + timezone.timedelta(minutes=5))
-            return self.otp_code
-        else:
-            new_opt = OtpToken.objects.filter(user=self.user).last().otp_code
-            return  new_opt
+    def create_new_opt_code(user):
+        OtpToken.objects.create(user=user, otp_expires_at=timezone.now() + timezone.timedelta(minutes=20))
+        code = OtpToken.objects.filter(user=user).last()
+        return code.otp_code
 
+    def send_email(user):
+        code = OtpToken.objects.filter(user=user).last()
 
-    def send_email(self):
-        if CustomUser.objects.filter(email=self.email).exists():
-            code = OtpToken.objects.filter(user=self).last()
+        # Email configuration
+        subject = 'Email Verification'
+        message = f'''
+                    Olá, {user.email}. Here is your vefication code {code.otp_code}. It expires in 20 minutes.
+                    Use the url to redirect back to website and verify your account.
+                    https://teste/verify_email/{user.email}
+        '''
 
-            # Email configuration
-            subject = 'Email Verification'
-            message = f'''
-                        Olá, {self.email}. Here is your new vefication code {code.otp_code}. It expires in 5 minutes.
-                        Use the url to redirect back to website and verify your account.
-                        https://teste/verify_email/{self.email}
-            '''
+        sender = 'carlos704estudo@gmail.com'
+        receiver = [user.email]
 
-            sender = 'carlos704estudo@gmail.com'
-            receiver = [self.email]
-
-            # send Email
-            send_mail(
-                subject,
-                message,
-                sender,
-                receiver,
-                fail_silently=False
-            )
-        else:
-            code = OtpToken.objects.filter(user=self).last()
-
-            # Email configuration
-            subject = 'Email Verification'
-            message = f'''
-                        Olá, {self.email}. Here is your vefication code {code.otp_code}. It expires in 5 minutes.
-                        Use the url to redirect back to website and verify your account.
-                        https://teste/verify_email/{self.email}
-            '''
-
-            sender = 'carlos704estudo@gmail.com'
-            receiver = [self.email]
-
-            # send Email
-            send_mail(
-                subject,
-                message,
-                sender,
-                receiver,
-                fail_silently=False
+        # send Email
+        send_mail(
+            subject,
+            message,
+            sender,
+            receiver,
+            fail_silently=False
             )
 
 
