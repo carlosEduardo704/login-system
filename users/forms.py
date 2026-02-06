@@ -6,11 +6,10 @@ from django.contrib.auth import get_user_model
 
 User = get_user_model()
 
-class LoginRegisterForm(forms.ModelForm):
+class LoginRegisterForm(forms.Form):
     email = forms.EmailField()
 
     class Meta:
-        model = get_user_model()
         fields = ['email']
 
 
