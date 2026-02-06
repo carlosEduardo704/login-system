@@ -19,26 +19,27 @@ class LoginRegisterView(FormView):
     def form_valid(self, form):
         email = form.cleaned_data['email']
 
-        User = get_user_model()
-        
-        if User.objects.filter(email=email).exists():
+        User = get_user_model().objects.get(email=email)
+
+        if User:
             if User.is_active:
                 return redirect('login')
             else:
-                return redirect('verify_email', email=User.email)
+                return redirect('verify_email', email=email)
         else:
             return redirect('register')
 
 class RegisterView(CreateView):
     form_class = RegisterForm
     template_name = 'signup.html'
-    success_url = reverse_lazy('verify_email')
-
 
     def form_valid(self, form):
         user = form.save(commit=False)
         user.is_active = False
         user.save()
+
+        email = form.cleaned_data['email']
+        self.success_url = reverse_lazy('verify_email', kwargs={'email': email})
 
         return super().form_valid(form)
 
@@ -92,16 +93,16 @@ class ResendOtpCodeView(FormView):
         self.success_url = reverse_lazy('verify_email', kwargs={'email': email})
 
         if user:
-            opt_code = OtpToken.objects.filter(user=user).last()
+            today_tokens = OtpToken.objects.filter(otp_created_at__date=timezone.localdate()).count()
 
-            if opt_code.otp_expires_at > timezone.now():
-                OtpToken.send_email(user)
-                return super().form_valid(form)
-            else:
-                OtpToken.create_new_opt_code(opt_code)
-                OtpToken.send_email(user)
+            if today_tokens > 2:
+                form.add_error('email', 'Maximum number of tokens per day rechead! Try again tomorrow!')
+                return super().form_invalid(form)
 
-                return super().form_valid(form)
+            OtpToken.create_new_opt_code(user=user)
+            OtpToken.send_email(user)
+            return super().form_valid(form)
+            
         else:
             form.add_error('email', 'invalid email')
             return super().form_invalid(form)
