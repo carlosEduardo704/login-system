@@ -27,6 +27,7 @@ class CustomUser(AbstractUser):
 class OtpToken(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     otp_code = models.CharField(max_length=6, default=secrets.token_hex(3))
+    url_code = models.CharField(max_length=6, default=secrets.token_hex(3))
     otp_created_at = models.DateTimeField(auto_now_add=True)
     otp_expires_at = models.DateTimeField(blank=True, null=True)
 
@@ -43,7 +44,7 @@ class OtpToken(models.Model):
         message = f'''
                     Olá, {user.email}. Here is your vefication code {code.otp_code}. It expires in 20 minutes.
                     Use the url to redirect back to website and verify your account.
-                    https://teste/verify_email/{user.email}
+                    https://localhost:8000/{code.url_code}/verify_email/{user.email}
         '''
 
         sender = 'carlos704estudo@gmail.com'
