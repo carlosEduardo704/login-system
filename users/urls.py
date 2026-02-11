@@ -7,6 +7,6 @@ urlpatterns = [
     path('register/', RegisterView.as_view(), name='register'),
     path('login/', LoginView.as_view(template_name='login.html'), name='login'),
     path('logout/', LogoutView.as_view(), name='logout'),
-    path('verify_email/<str:email>', VerifyEmailView.as_view(), name='verify_email'),
+    path('verify_email/<str:url_code>/<str:email>', VerifyEmailView.as_view(), name='verify_email'),
     path('resend_code/', ResendOtpCodeView.as_view(), name='resend_code')
 ]
