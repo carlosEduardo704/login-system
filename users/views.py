@@ -11,7 +11,7 @@ from django.shortcuts import redirect
 from django.contrib.auth.password_validation import password_validators_help_texts
 from django.utils import timezone
 from django.core.mail import send_mail
-
+from django.http import Http404
 class LoginRegisterView(FormView):
     template_name = 'login_register.html'
     form_class = LoginRegisterForm
@@ -61,6 +61,16 @@ class VerifyEmailView(FormView):
     form_class = OtpVerificationForm
     template_name = 'verify_email.html'
     
+    def dispatch(self, request, *args, **kwargs):
+        url_code = self.kwargs.get('url_code')
+        user = get_user_model().objects.get(email=self.kwargs.get('email'))
+        token = OtpToken.objects.filter(user=user).last().url_code
+
+        if token != url_code:
+            raise Http404()
+
+        return super().dispatch(request, *args, **kwargs)
+
     def get_queryset(self):
         email = self.kwargs.get('email')
         return get_user_model().objects.filter(email=email)
@@ -106,4 +116,3 @@ class ResendOtpCodeView(FormView):
         else:
             form.add_error('email', 'invalid email')
             return super().form_invalid(form)
-        
