@@ -12,6 +12,8 @@ from django.contrib.auth.password_validation import password_validators_help_tex
 from django.utils import timezone
 from django.core.mail import send_mail
 from django.http import Http404
+from django.contrib import messages
+
 class LoginRegisterView(FormView):
     template_name = 'login_register.html'
     form_class = LoginRegisterForm
@@ -19,13 +21,15 @@ class LoginRegisterView(FormView):
     def form_valid(self, form):
         email = form.cleaned_data['email']
 
-        User = get_user_model().objects.get(email=email)
+        qs = get_user_model().objects.filter(email=email)
 
-        if User:
-            if User.is_active:
+        if qs:
+            user = get_user_model().objects.get(email=email)
+            if user.is_active:
                 return redirect('login')
             else:
-                return redirect('verify_email', email=email)
+                url_code = OtpToken.objects.filter(user=user).last().url_code
+                return redirect('verify_email', url_code=url_code, email=email)
         else:
             return redirect('register')
 
@@ -39,7 +43,8 @@ class RegisterView(CreateView):
         user.save()
 
         email = form.cleaned_data['email']
-        self.success_url = reverse_lazy('verify_email', kwargs={'email': email})
+        url_code = OtpToken.objects.filter(user=email).last().url_code
+        self.success_url = reverse_lazy('verify_email', kwargs={'url_code': url_code, 'email': email})
 
         return super().form_valid(form)
 
@@ -60,6 +65,7 @@ class RegisterView(CreateView):
 class VerifyEmailView(FormView):
     form_class = OtpVerificationForm
     template_name = 'verify_email.html'
+    success_url = reverse_lazy('login')
     
     def dispatch(self, request, *args, **kwargs):
         url_code = self.kwargs.get('url_code')
@@ -86,7 +92,8 @@ class VerifyEmailView(FormView):
             user.is_active = True
             user.save()
             
-            return redirect('login') 
+            messages.success(self.request, "The user was successfully verified!")
+            return super().form_valid(form)
         else:
             form.add_error('otp_code', 'Code invalid or expired.')
             return super().form_invalid(form)
@@ -98,21 +105,22 @@ class ResendOtpCodeView(FormView):
 
     def form_valid(self, form):
         email = form.cleaned_data['email']
-        user = get_user_model().objects.get(email=email)
+        qs = get_user_model().objects.filter(email=email)
 
-        self.success_url = reverse_lazy('verify_email', kwargs={'email': email})
-
-        if user:
-            today_tokens = OtpToken.objects.filter(otp_created_at__date=timezone.localdate()).count()
-
-            if today_tokens > 2:
-                form.add_error('email', 'Maximum number of tokens per day rechead! Try again tomorrow!')
-                return super().form_invalid(form)
-
-            OtpToken.create_new_opt_code(user=user)
-            OtpToken.send_email(user)
-            return super().form_valid(form)
-            
-        else:
+        if not qs:
             form.add_error('email', 'invalid email')
             return super().form_invalid(form)
+
+        user = get_user_model().objects.get(email=email)
+        number_of_tokens_today = OtpToken.objects.filter(user=user, otp_created_at__date=timezone.localdate()).count()
+
+        if number_of_tokens_today > 2:
+            form.add_error('email', 'Maximum number of tokens per day rechead! Try again tomorrow!')
+            return super().form_invalid(form)
+
+        OtpToken.create_new_opt_code(user=user)
+        OtpToken.send_email(user)
+
+        url_code = OtpToken.objects.filter(user=user).last().url_code
+        self.success_url = reverse_lazy('verify_email', kwargs={'url_code': url_code, 'email': email})
+        return super().form_valid(form)
