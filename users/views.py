@@ -1,5 +1,6 @@
 # CBViews
 from django.views.generic import CreateView, FormView
+from django.contrib.auth.views import LoginView
 # Forms
 from users.forms import RegisterForm, LoginRegisterForm, OtpVerificationForm, ResendOptCodeForm
 # Models
@@ -20,6 +21,7 @@ class LoginRegisterView(FormView):
 
     def form_valid(self, form):
         email = form.cleaned_data['email']
+        self.request.session['email'] = email
 
         qs = get_user_model().objects.filter(email=email)
 
@@ -33,9 +35,33 @@ class LoginRegisterView(FormView):
         else:
             return redirect('register')
 
+
+class CustomLoginView(LoginView):
+    template_name='login.html'
+
+    def get_initial(self):
+        initial = super().get_initial()
+
+        email = self.request.session.pop('email', None)
+
+        if email:
+            initial['username'] = email
+        
+        return initial
+
 class RegisterView(CreateView):
     form_class = RegisterForm
     template_name = 'signup.html'
+
+    def get_initial(self):
+        initial = super().get_initial()
+
+        email = self.request.session.pop('email', None)
+
+        if email:
+            initial['email'] = email
+        
+        return initial
 
     def form_valid(self, form):
         user = form.save(commit=False)
