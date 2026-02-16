@@ -1,11 +1,17 @@
 {% extends "base.html" %}
+{% block title %}Resend OTP{% endblock %}
 
 {% block content %}
-  <form method="post">
+<h2>Resend OTP Code</h2>
+
+<form method="post">
     {% csrf_token %}
-    {{ form.as_p}}
-    <button type="submit">
-      Resend Code
-    </button>
-  </form>
-{% endblock content %}
+    {{form}}
+    <button type="submit">Send New Code</button>
+</form>
+
+<div class="link">
+    <a href="{% url 'login' %}">Back to login</a>
+</div>
+
+{% endblock %}

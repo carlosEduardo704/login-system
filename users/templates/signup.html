@@ -1,18 +1,17 @@
 {% extends "base.html" %}
+{% block title %}Register{% endblock %}
 
 {% block content %}
-  <form method="post">
+<h2>Create Account</h2>
+
+<form method="post">
     {% csrf_token %}
-    {{ forms.non_field_errors }}
-    {{ form.as_p}}
-    <ul>
-      {% for rule in password_rules %}
-      <li>{{ rule }}</li>
-      {% endfor %}
-    </ul>
-      
-    <button type="submit">
-      Confirmar
-    </button>
-  </form>
-{% endblock content %}
+    {{form.as_p}}
+    <button type="submit">Register</button>
+</form>
+
+<div class="link">
+    <a href="{% url 'login' %}">Already have an account?</a>
+</div>
+
+{% endblock %}
