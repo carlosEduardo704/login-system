@@ -43,18 +43,13 @@ class RegisterView(CreateView):
 
     def form_valid(self, form):
         email = form.cleaned_data['email']
-        qs = get_user_model().objects.filter(email=email)
+        user = form.save(commit=False)
+        user.save()
 
-        if qs:
-            return redirect('login')
-        else:
-            user = form.save(commit=False)
-            user.save()
+        url_code = OtpToken.objects.filter(user=email).last().url_code
+        self.success_url = reverse_lazy('verify_email', kwargs={'url_code': url_code, 'email': email})
 
-            url_code = OtpToken.objects.filter(user=email).last().url_code
-            self.success_url = reverse_lazy('verify_email', kwargs={'url_code': url_code, 'email': email})
-
-            return super().form_valid(form)
+        return super().form_valid(form)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
