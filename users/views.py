@@ -14,27 +14,6 @@ from django.utils import timezone
 from django.http import Http404
 from django.contrib import messages
 
-class LoginRegisterView(FormView):
-    template_name = 'login_register.html'
-    form_class = LoginRegisterForm
-
-    def form_valid(self, form):
-        email = form.cleaned_data['email']
-        self.request.session['email'] = email
-
-        qs = get_user_model().objects.filter(email=email)
-
-        if qs:
-            user = get_user_model().objects.get(email=email)
-            if user.is_active:
-                return redirect('login')
-            else:
-                url_code = OtpToken.objects.filter(user=user).last().url_code
-                return redirect('verify_email', url_code=url_code, email=email)
-        else:
-            return redirect('register')
-
-
 class CustomLoginView(LoginView):
     template_name='login.html'
 

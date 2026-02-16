@@ -1,17 +1,6 @@
 from django import forms
-from users.models import CustomUser, OtpToken
-from django.conf import settings
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth import get_user_model
-
-User = get_user_model()
-
-class LoginRegisterForm(forms.Form):
-    email = forms.EmailField()
-
-    class Meta:
-        fields = ['email']
-
 
 class RegisterForm(UserCreationForm):
     
@@ -24,7 +13,7 @@ class RegisterForm(UserCreationForm):
         label='Confirm password'
     )
     class Meta(UserCreationForm.Meta):
-        model = User
+        model = get_user_model()
         fields = ('email',)
 
 
