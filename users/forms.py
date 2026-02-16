@@ -32,20 +32,22 @@ class RegisterForm(UserCreationForm):
         super().__init__(*args, **kwargs)
         self.user = user
 
-        self.fields['email'].widget.attrs['placeholder'] = 'Email'
-        self.fields['password1'].widget.attrs['placeholder'] = 'Enter password'
-        self.fields['password2'].widget.attrs['placeholder'] = 'Confirm password'
-
 
 class OtpVerificationForm(forms.Form):
-    otp_code = forms.CharField(max_length=6, label='Enter your verication code')
+    otp_code = forms.CharField(max_length=6, label='OTP Code:')
 
     class Meta:
         fields = ['otp_code']
 
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.fields['otp_code'].widget.attrs['placeholder'] = 'OTP Code'
+
+
 class ResendOptCodeForm(forms.Form):
-    email = forms.EmailField(widget=forms.EmailInput(attrs={'placeholder':'Email'}),)
+    email = forms.EmailField(widget=forms.EmailInput(),)
 
     class Meta:
         fields = ['email']
