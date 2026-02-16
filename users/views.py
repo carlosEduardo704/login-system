@@ -2,16 +2,15 @@
 from django.views.generic import CreateView, FormView
 from django.contrib.auth.views import LoginView
 # Forms
-from users.forms import RegisterForm, LoginRegisterForm, OtpVerificationForm, ResendOptCodeForm
+from users.forms import RegisterForm, OtpVerificationForm, ResendOptCodeForm
 # Models
 from django.contrib.auth import get_user_model
-from users.models import CustomUser, OtpToken
+from users.models import OtpToken
 # ...
 from django.urls import reverse_lazy
 from django.shortcuts import redirect
 from django.contrib.auth.password_validation import password_validators_help_texts
 from django.utils import timezone
-from django.core.mail import send_mail
 from django.http import Http404
 from django.contrib import messages
 
@@ -64,22 +63,19 @@ class RegisterView(CreateView):
         return initial
 
     def form_valid(self, form):
-        user = form.save(commit=False)
-        user.is_active = False
-        user.save()
-
         email = form.cleaned_data['email']
-        url_code = OtpToken.objects.filter(user=email).last().url_code
-        self.success_url = reverse_lazy('verify_email', kwargs={'url_code': url_code, 'email': email})
+        qs = get_user_model().objects.filter(email=email)
 
-        return super().form_valid(form)
+        if qs:
+            return redirect('login')
+        else:
+            user = form.save(commit=False)
+            user.save()
 
-    def form_invalid(self, form):
-        email = form.cleaned_data['email']
-        User = get_user_model()
+            url_code = OtpToken.objects.filter(user=email).last().url_code
+            self.success_url = reverse_lazy('verify_email', kwargs={'url_code': url_code, 'email': email})
 
-        if User.objects.filter(email=email).exists():
-            return super().form_invalid(form)
+            return super().form_valid(form)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -94,8 +90,10 @@ class VerifyEmailView(FormView):
     success_url = reverse_lazy('login')
     
     def dispatch(self, request, *args, **kwargs):
+        user_email = self.kwargs.get('email')
         url_code = self.kwargs.get('url_code')
-        user = get_user_model().objects.get(email=self.kwargs.get('email'))
+
+        user = get_user_model().objects.get(email=user_email)
         token = OtpToken.objects.filter(user=user).last().url_code
 
         if token != url_code:
@@ -138,6 +136,11 @@ class ResendOtpCodeView(FormView):
             return super().form_invalid(form)
 
         user = get_user_model().objects.get(email=email)
+
+        if user.is_active:
+            form.add_error('email', 'This user is already active!')
+            return super().form_invalid(form)
+
         number_of_tokens_today = OtpToken.objects.filter(user=user, otp_created_at__date=timezone.localdate()).count()
 
         if number_of_tokens_today > 2:
