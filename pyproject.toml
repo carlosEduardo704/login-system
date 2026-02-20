@@ -8,4 +8,5 @@ dependencies = [
     "django>=6.0.1",
     "mysqlclient>=2.2.8",
     "python-dotenv>=1.2.1",
+    "uwsgi>=2.0.31",
 ]
