@@ -13,9 +13,18 @@ from django.urls import reverse_lazy
 from django.shortcuts import redirect, render
 from django.utils import timezone
 
+class HomePageView(View):
+    
+    def dispatch(self, request):
+        if not self.request.user.is_authenticated:
+            return redirect('register')
+
 class SuccessLoginView(LoginRequiredMixin, TemplateView):
     template_name = 'success_login.html'
 
+    def dispatch(self, request):
+        if not self.request.user.is_authenticated:
+            return redirect('register')
 
 class EmailCheckView(View):
     template_name = 'signup.html'
