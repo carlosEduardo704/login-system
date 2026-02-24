@@ -29,10 +29,10 @@ class OtpToken(models.Model):
     otp_code = models.CharField(max_length=6, default=secrets.token_hex(3))
     url_code = models.CharField(max_length=6, default=secrets.token_hex(3))
     otp_created_at = models.DateTimeField(auto_now_add=True)
-    otp_expires_at = models.DateTimeField(blank=True, null=True)
+    otp_expires_at = models.DateTimeField(blank=True, null=True, default=timezone.now() + timezone.timedelta(minutes=20))
 
     def create_new_opt_code(user):
-        OtpToken.objects.create(user=user, otp_expires_at=timezone.now() + timezone.timedelta(minutes=20))
+        OtpToken.objects.create(user=user)
         code = OtpToken.objects.filter(user=user).last()
         return code.otp_code
 
@@ -43,8 +43,6 @@ class OtpToken(models.Model):
         subject = 'Email Verification'
         message = f'''
                     Olá, {user.email}. Here is your vefication code {code.otp_code}. It expires in 20 minutes.
-                    Use the url to redirect back to website and verify your account.
-                    https://localhost:8000/{code.url_code}/verify_email/{user.email}
         '''
 
         sender = 'carlos704estudo@gmail.com'
