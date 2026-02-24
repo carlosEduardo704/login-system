@@ -6,16 +6,31 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from users.forms import OtpVerificationForm, CheckEmailForm
 from django.contrib.auth.forms import SetPasswordForm
 # Models
-from django.contrib.auth import get_user_model, login as auth_login, update_session_auth_hash
+from django.contrib.auth import get_user_model, login as auth_login
 from users.models import OtpToken
 # ...
 from django.urls import reverse_lazy
 from django.shortcuts import redirect, render
 from django.utils import timezone
 
+class HomePageView(View):
+    
+    def dispatch(self, request):
+        if not self.request.user.is_authenticated:
+            return redirect('register')
+        else:
+            return redirect('success_login')
+
+        return super().dispatch(request)
+
 class SuccessLoginView(LoginRequiredMixin, TemplateView):
     template_name = 'success_login.html'
 
+    def dispatch(self, request):
+        if not self.request.user.is_authenticated:
+            return redirect('register')
+
+        return super().dispatch(request)
 
 class EmailCheckView(View):
     template_name = 'signup.html'
@@ -74,7 +89,6 @@ class EmailCheckView(View):
                     form.add_error('otp_code', 'Code invalid or expired.')
                 
                 form_three = SetPasswordForm(user=user)
-                del request.session['email']
 
                 return render(request, self.template_name, {'form': form_three, 'step': 3})
 
@@ -85,9 +99,8 @@ class EmailCheckView(View):
 
             if form.is_valid():
                 user = form.save()
-
-                update_session_auth_hash(request, user)
-
+                auth_login(request, user)
+                del request.session['email']
                 return redirect('success_login')
 
 
