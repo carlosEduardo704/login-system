@@ -1,11 +1,10 @@
 from django.urls import path
-from users.views import RegisterView, VerifyEmailView, ResendOtpCodeView, CustomLoginView
+from users.views import CustomLoginView, EmailCheckView, SuccessLoginView
 from django.contrib.auth.views import LogoutView
 
 urlpatterns = [
-    path('register/', RegisterView.as_view(), name='register'),
+    path('success_login/', SuccessLoginView.as_view(), name='success_login'),
+    path('register/', EmailCheckView.as_view(), name='register'),
     path('login/', CustomLoginView.as_view(), name='login'),
-    path('logout/', LogoutView.as_view(), name='logout'),
-    path('verify_email/<str:url_code>/<str:email>', VerifyEmailView.as_view(), name='verify_email'),
-    path('resend_code/', ResendOtpCodeView.as_view(), name='resend_code')
+    path('logout/', LogoutView.as_view(next_page='login'), name='logout'),
 ]
