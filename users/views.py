@@ -1,21 +1,106 @@
 # CBViews
-from django.views.generic import CreateView, FormView
+from django.views.generic import View, TemplateView
 from django.contrib.auth.views import LoginView
+from django.contrib.auth.mixins import LoginRequiredMixin
 # Forms
-from users.forms import RegisterForm, OtpVerificationForm, ResendOptCodeForm
+from users.forms import OtpVerificationForm, CheckEmailForm
+from django.contrib.auth.forms import SetPasswordForm
 # Models
-from django.contrib.auth import get_user_model
+from django.contrib.auth import get_user_model, login as auth_login, update_session_auth_hash
 from users.models import OtpToken
 # ...
 from django.urls import reverse_lazy
-from django.shortcuts import redirect
-from django.contrib.auth.password_validation import password_validators_help_texts
+from django.shortcuts import redirect, render
 from django.utils import timezone
-from django.http import Http404
-from django.contrib import messages
+
+class SuccessLoginView(LoginRequiredMixin, TemplateView):
+    template_name = 'success_login.html'
+
+
+class EmailCheckView(View):
+    template_name = 'signup.html'
+
+    def dispatch(self, request, *args, **kwargs):
+        if self.request.user.is_authenticated:
+            return redirect('success_login')
+
+        return super().dispatch(request, *args, **kwargs)
+
+    def get(self, request, *args, **kwargs):
+        form = CheckEmailForm()
+        return render(request, self.template_name, {'form': form, 'step': 1})
+
+    def post(self, request, *args, **kwargs):
+        step = int(request.POST.get('step', 1))
+
+        if step == 1:
+            form = CheckEmailForm(request.POST)
+
+            if form.is_valid():
+                email = form.cleaned_data['email']
+
+                user, created = get_user_model().objects.get_or_create(email=email)
+
+                if created:
+                    user.set_unusable_password()
+                    user.save()
+                
+                OtpToken.objects.create(user=user, otp_code='abcdef')
+                # OtpToken.create_new_opt_code(user=user)
+                # OtpToken.send_email(user=user)
+                
+                request.session['email'] = email
+
+                form_two = OtpVerificationForm() 
+                return render(request, self.template_name, {'form': form_two, 'step': 2})
+
+        elif step == 2:
+            form = OtpVerificationForm(request.POST)
+
+            if form.is_valid():
+                email = request.session.get('email')
+                user = get_user_model().objects.get(email=email)
+
+                code = form.cleaned_data['otp_code']
+                user_opt_code = OtpToken.objects.filter(user=user).last()
+                if code == user_opt_code.otp_code and user_opt_code.otp_expires_at > timezone.now():
+
+                    if user.has_usable_password():
+                        user.backend = 'django.contrib.auth.backends.ModelBackend'
+                        auth_login(request, user)
+                        del request.session['email']
+                        return redirect('success_login')
+
+                else:
+                    form.add_error('otp_code', 'Code invalid or expired.')
+                
+                form_three = SetPasswordForm(user=user)
+                del request.session['email']
+
+                return render(request, self.template_name, {'form': form_three, 'step': 3})
+
+        elif step == 3:
+            email = request.session.get('email')
+            user = get_user_model().objects.get(email=email)
+            form = SetPasswordForm(user=user, data=request.POST)
+
+            if form.is_valid():
+                user = form.save()
+
+                update_session_auth_hash(request, user)
+
+                return redirect('success_login')
+
+
+        return render(request, self.template_name, {'form': form, 'step': step})
+
 
 class CustomLoginView(LoginView):
     template_name='login.html'
+    
+    
+    def get_success_url(self):
+        return reverse_lazy('success_login')
 
     def get_initial(self):
         initial = super().get_initial()
@@ -26,104 +111,3 @@ class CustomLoginView(LoginView):
             initial['username'] = email
         
         return initial
-
-class RegisterView(CreateView):
-    form_class = RegisterForm
-    template_name = 'signup.html'
-
-    def get_initial(self):
-        initial = super().get_initial()
-
-        email = self.request.session.pop('email', None)
-
-        if email:
-            initial['email'] = email
-        
-        return initial
-
-    def form_valid(self, form):
-        email = form.cleaned_data['email']
-        user = form.save(commit=False)
-        user.save()
-
-        url_code = OtpToken.objects.filter(user=email).last().url_code
-        self.success_url = reverse_lazy('verify_email', kwargs={'url_code': url_code, 'email': email})
-
-        return super().form_valid(form)
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-
-        context['password_rules'] = password_validators_help_texts()
-        return context
-
-
-class VerifyEmailView(FormView):
-    form_class = OtpVerificationForm
-    template_name = 'verify_email.html'
-    success_url = reverse_lazy('login')
-    
-    def dispatch(self, request, *args, **kwargs):
-        user_email = self.kwargs.get('email')
-        url_code = self.kwargs.get('url_code')
-
-        user = get_user_model().objects.get(email=user_email)
-        token = OtpToken.objects.filter(user=user).last().url_code
-
-        if token != url_code:
-            raise Http404()
-
-        return super().dispatch(request, *args, **kwargs)
-
-    def get_queryset(self):
-        email = self.kwargs.get('email')
-        return get_user_model().objects.filter(email=email)
-
-    def form_valid(self, form):
-        code = form.cleaned_data['otp_code']
-        email = self.kwargs.get('email')
-
-        user = get_user_model().objects.get(email=email)
-        otp_record = OtpToken.objects.filter(user=user).last()
-
-        if code == otp_record.otp_code and otp_record.otp_expires_at > timezone.now():
-            user.is_active = True
-            user.save()
-            
-            messages.success(self.request, "The user was successfully verified!")
-            return super().form_valid(form)
-        else:
-            form.add_error('otp_code', 'Code invalid or expired.')
-            return super().form_invalid(form)
-
-
-class ResendOtpCodeView(FormView):
-    form_class = ResendOptCodeForm
-    template_name = 'resend_code.html'
-
-    def form_valid(self, form):
-        email = form.cleaned_data['email']
-        qs = get_user_model().objects.filter(email=email)
-
-        if not qs:
-            form.add_error('email', 'invalid email')
-            return super().form_invalid(form)
-
-        user = get_user_model().objects.get(email=email)
-
-        if user.is_active:
-            form.add_error('email', 'This user is already active!')
-            return super().form_invalid(form)
-
-        number_of_tokens_today = OtpToken.objects.filter(user=user, otp_created_at__date=timezone.localdate()).count()
-
-        if number_of_tokens_today > 2:
-            form.add_error('email', 'Maximum number of tokens per day rechead! Try again tomorrow!')
-            return super().form_invalid(form)
-
-        OtpToken.create_new_opt_code(user=user)
-        OtpToken.send_email(user)
-
-        url_code = OtpToken.objects.filter(user=user).last().url_code
-        self.success_url = reverse_lazy('verify_email', kwargs={'url_code': url_code, 'email': email})
-        return super().form_valid(form)
