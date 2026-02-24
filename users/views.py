@@ -45,9 +45,8 @@ class EmailCheckView(View):
                     user.set_unusable_password()
                     user.save()
                 
-                OtpToken.objects.create(user=user, otp_code='abcdef')
-                # OtpToken.create_new_opt_code(user=user)
-                # OtpToken.send_email(user=user)
+                OtpToken.create_new_opt_code(user=user)
+                OtpToken.send_email(user=user)
                 
                 request.session['email'] = email
 
