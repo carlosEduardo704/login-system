@@ -1,6 +1,5 @@
 # Models
 from django.db import models
-from django.db import models
 from django.contrib.auth.models import AbstractUser
 # validation
 from django.core.validators import validate_email
@@ -27,17 +26,17 @@ class CustomUser(AbstractUser):
 class OtpToken(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     otp_code = models.CharField(max_length=6, default=secrets.token_hex(3))
-    url_code = models.CharField(max_length=6, default=secrets.token_hex(3))
     otp_created_at = models.DateTimeField(auto_now_add=True)
     otp_expires_at = models.DateTimeField(blank=True, null=True, default=timezone.now() + timezone.timedelta(minutes=20))
-
-    def create_new_opt_code(user):
-        OtpToken.objects.create(user=user)
-        code = OtpToken.objects.filter(user=user).last()
+    
+    @classmethod
+    def create_new_opt_code(cls, user):
+        code = cls.objects.create(user=user)
         return code.otp_code
 
-    def send_email(user):
-        code = OtpToken.objects.filter(user=user).last()
+    @classmethod
+    def send_email(cls, user):
+        code = cls.objects.filter(user=user).last()
 
         # Email configuration
         subject = 'Email Verification'
@@ -59,4 +58,4 @@ class OtpToken(models.Model):
 
 
     def __str__(self):
-        return self.user.email
+        return self.otp_code
