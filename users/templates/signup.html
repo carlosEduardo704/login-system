@@ -3,7 +3,9 @@
 
 {% block content %}
   {% if step  == 1 %}
-    <h2>Receive acess code by email</h2>
+    <h2>Hello!</h2>
+    <h3>Get an acess code by email</h3>
+     
   {% elif step == 2 %}
     <h2>Enter the code sent to your email</h2>
   {% elif step == 3%}
@@ -28,8 +30,7 @@
   </form>
 
   <div class="link">
-    <p>Already have an account?</p>
-    <a href="{% url 'login' %}">Login with email and password</a>
+    <p>Already have an account? <a href="{% url 'login' %}">Login</a></p>
   </div>
 
 {% endblock %}
