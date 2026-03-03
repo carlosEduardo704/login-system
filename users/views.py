@@ -3,7 +3,7 @@ from django.views.generic import View, TemplateView
 from django.contrib.auth.views import LoginView
 from django.contrib.auth.mixins import LoginRequiredMixin
 # Forms
-from users.forms import OtpVerificationForm, CheckEmailForm
+from users.forms import OtpVerificationForm, CheckEmailForm, CustomAuthenticationForm
 from django.contrib.auth.forms import SetPasswordForm
 # Models
 from django.contrib.auth import get_user_model, login as auth_login
@@ -109,6 +109,7 @@ class EmailCheckView(View):
 
 class CustomLoginView(LoginView):
     template_name='login.html'
+    form_class = CustomAuthenticationForm
     
     
     def get_success_url(self):

@@ -1,9 +1,14 @@
 from django import forms
-from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth import get_user_model
 from users.models import OtpToken
 from django.utils import timezone
 from django.core.exceptions import ValidationError
+
+
+class CustomAuthenticationForm(AuthenticationForm):
+    username = forms.CharField(widget=forms.TextInput(attrs={'placeholder': 'hello@exemple.com'}), label="Email")
+    password = forms.CharField(widget=forms.PasswordInput(attrs={'placeholder': '••••••••'}), label="Password")
 
 class CheckEmailForm(forms.Form):
     email = forms.EmailField()
@@ -30,6 +35,12 @@ class CheckEmailForm(forms.Form):
 
     class Meta:
         fields = ['email',]
+    Welcome back!
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.fields['email'].widget.attrs['placeholder'] = 'hello@exemple.com'
 
 class OtpVerificationForm(forms.Form):
     otp_code = forms.CharField(max_length=6, label='')
