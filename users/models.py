@@ -35,7 +35,7 @@ class OtpToken(models.Model):
         return code.otp_code
 
     @classmethod
-    def send_email(cls, user):
+    def send_email_otp_code(cls, user):
         code = cls.objects.filter(user=user).last()
 
         # Email configuration
@@ -59,3 +59,42 @@ class OtpToken(models.Model):
 
     def __str__(self):
         return self.otp_code
+
+
+class UrlCodeOtp(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    url_code = models.CharField(max_length=32, default=secrets.token_hex(16))
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField(blank=True, null=True, default=timezone.now() + timezone.timedelta(minutes=5))
+
+    @classmethod
+    def create_url_code(cls, user):
+        code = cls.objects.create(user=user)
+        return code.url_code
+
+    @classmethod
+    def send_email_change_password_url(cls, user):
+        url_code = cls.objects.filter(user=user).last().url_code
+        link = f'http://localhost:8000/update_password/{user.email}/{url_code}/'
+
+        # Email configuration
+        subject = 'Update Password'
+        message = f'''
+            Olá, {user.email}. Here is your link to change the password {link} . It expires in 5 minutes.
+        '''
+
+        sender = 'carlos704estudo@gmail.com'
+        receiver = [user.email]
+
+        # send Email
+        send_mail(
+            subject,
+            message,
+            sender,
+            receiver,
+            fail_silently=False
+            )
+
+
+    def __str__(self):
+        return f'{self.user}, {self.url_code}'
