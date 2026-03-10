@@ -3,15 +3,16 @@ from django.views.generic import View, TemplateView
 from django.contrib.auth.views import LoginView
 from django.contrib.auth.mixins import LoginRequiredMixin
 # Forms
-from users.forms import OtpVerificationForm, CheckEmailForm, CustomAuthenticationForm
+from users.forms import OtpVerificationForm, CheckEmailForm, CustomAuthenticationForm, EmailCheckForgotPassword
 from django.contrib.auth.forms import SetPasswordForm
 # Models
 from django.contrib.auth import get_user_model, login as auth_login
-from users.models import OtpToken
+from users.models import OtpToken, UrlCodeOtp
 # ...
 from django.urls import reverse_lazy
 from django.shortcuts import redirect, render
 from django.utils import timezone
+from django.http import Http404
 
 class HomePageView(View):
     
@@ -26,11 +27,11 @@ class HomePageView(View):
 class SuccessLoginView(LoginRequiredMixin, TemplateView):
     template_name = 'success_login.html'
 
-    def dispatch(self, request):
+    def dispatch(self, request, *args, **kwargs):
         if not self.request.user.is_authenticated:
             return redirect('register')
 
-        return super().dispatch(request)
+        return super().dispatch(request, *args, **kwargs)
 
 class EmailCheckView(View):
     template_name = 'signup.html'
@@ -61,7 +62,7 @@ class EmailCheckView(View):
                     user.save()
                 
                 OtpToken.create_new_opt_code(user=user)
-                OtpToken.send_email(user=user)
+                OtpToken.send_email_otp_code(user=user)
                 
                 request.session['email'] = email
 
@@ -111,16 +112,64 @@ class CustomLoginView(LoginView):
     template_name='login.html'
     form_class = CustomAuthenticationForm
     
-    
+    def dispatch(self, request, *args, **kwargs):
+        if self.request.user.is_authenticated:
+            return redirect('success_login')
+        
+        return super().dispatch(request, *args, **kwargs)
+
     def get_success_url(self):
         return reverse_lazy('success_login')
 
-    def get_initial(self):
-        initial = super().get_initial()
 
-        email = self.request.session.pop('email', None)
+class ForgotPasswordView(View):
+    template_name = 'forgot_password.html'
 
-        if email:
-            initial['username'] = email
+    def get(self, request, *args, **kwargs):
+        form = EmailCheckForgotPassword()
+        return render(request, self.template_name, {'form': form})
+
+    
+    def post(self, request, *args, **kwargs):
+        form = EmailCheckForgotPassword(request.POST)
+
+        if form.is_valid():
+            email = form.cleaned_data['email']
+
+            try:
+                user = get_user_model().objects.get(email=email)
+
+                UrlCodeOtp.create_url_code(user)
+                UrlCodeOtp.send_email_change_password_url(user)
+
+            except get_user_model().DoesNotExist:
+                pass
+
+            return render(request, self.template_name, {'success': True})
+
+        return render(request, self.template_name, {'form': form})
         
-        return initial
+
+class UpdatePassordView(View):
+    template_name = 'update_password.html'
+
+
+    def dispatch(self, request, *args, **kwargs):
+        email = kwargs.get('email')
+        code_on_url = kwargs.get('url_code')
+
+        try:
+            user = get_user_model().objects.get(email=email)
+            user_last_url_code = UrlCodeOtp.objects.filter(user=user).last()
+            
+            if code_on_url != user_last_url_code.url_code or user_last_url_code.expires_at <= timezone.now():
+                raise (Http404('Page Not Found!'))
+                
+        except get_user_model().DoesNotExist:
+            raise Http404('Page not Found!')
+            
+        return super().dispatch(request, *args, **kwargs)
+
+    def get(self, request, *args, **kwargs):
+        form = SetPasswordForm(self.request.user)
+        return render(request, self.template_name, {'form': form})
