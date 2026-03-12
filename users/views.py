@@ -8,6 +8,8 @@ from django.contrib.auth.forms import SetPasswordForm
 # Models
 from django.contrib.auth import get_user_model, login as auth_login
 from users.models import OtpToken, UrlCodeOtp
+# Tasks
+from users.tasks import send_password_reset_user_email, send_otp_code_to_user_email
 # ...
 from django.urls import reverse_lazy
 from django.shortcuts import redirect, render
@@ -61,8 +63,7 @@ class EmailCheckView(View):
                     user.set_unusable_password()
                     user.save()
                 
-                OtpToken.create_new_opt_code(user=user)
-                OtpToken.send_email_otp_code(user=user)
+                send_otp_code_to_user_email.delay(user.pk)
                 
                 request.session['email'] = email
 
@@ -136,14 +137,7 @@ class ForgotPasswordView(View):
         if form.is_valid():
             email = form.cleaned_data['email']
 
-            try:
-                user = get_user_model().objects.get(email=email)
-
-                UrlCodeOtp.create_url_code(user)
-                UrlCodeOtp.send_email_change_password_url(user)
-
-            except get_user_model().DoesNotExist:
-                pass
+            send_password_reset_user_email.delay(email)
 
             return render(request, self.template_name, {'success': True})
 
