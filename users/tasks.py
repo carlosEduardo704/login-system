@@ -18,7 +18,7 @@ def send_password_reset_user_email(email):
         return
 
     token = UrlCodeOtp.create_url_code(user)
-    link = f'http://{os.getenv("SITE_DOMAIN")}/{email}/{token}'
+    link = f'http://{os.getenv("SITE_DOMAIN")}/update_password/{email}/{token}'
     send_mail(
         subject="Reset Password",
         message=f"Olá, {email}. Here is your link to change the password {link} . It expires in 5 minutes.",
