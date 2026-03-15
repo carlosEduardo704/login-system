@@ -15,6 +15,9 @@ from django.urls import reverse_lazy
 from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.http import Http404
+# Rate limit
+from django_ratelimit.decorators import ratelimit
+from django.utils.decorators import method_decorator
 
 class HomePageView(View):
     
@@ -35,6 +38,7 @@ class SuccessLoginView(LoginRequiredMixin, TemplateView):
 
         return super().dispatch(request, *args, **kwargs)
 
+@method_decorator(ratelimit(key='ip', rate='5/m', method='POST', block=True), name='dispatch')
 class EmailCheckView(View):
     template_name = 'signup.html'
 
@@ -122,7 +126,7 @@ class CustomLoginView(LoginView):
     def get_success_url(self):
         return reverse_lazy('success_login')
 
-
+@method_decorator(ratelimit(key='ip', rate='5/m', method='POST', block=True), name='dispatch')
 class ForgotPasswordView(View):
     template_name = 'forgot_password.html'
 
@@ -143,7 +147,7 @@ class ForgotPasswordView(View):
 
         return render(request, self.template_name, {'form': form})
         
-
+@method_decorator(ratelimit(key='ip', rate='5/m', method='POST', block=True), name='dispatch')
 class UpdatePassordView(View):
     template_name = 'update_password.html'
 
