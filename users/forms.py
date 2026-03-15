@@ -25,8 +25,8 @@ class CheckEmailForm(forms.Form):
         user, created = get_user_model().objects.get_or_create(email=email)
 
         # Otp_code creating limit
-        start = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
-        end = start + timezone.timedelta(days=1)
+        start = timezone.now() - timezone.timedelta(minutes=20)
+        end = timezone.now()
 
         user_otp_create_today = OtpToken.objects.filter(user=user,
             otp_created_at__gte=start,
@@ -34,7 +34,7 @@ class CheckEmailForm(forms.Form):
 
         if user_otp_create_today > 3:
             raise ValidationError(
-                "Too many attempts. You rechead the OTP code limit today. Try again tomorrow."
+                "Too many attempts. Try again latter."
             )
         
         return email
