@@ -11,6 +11,18 @@ from django.core.mail import send_mail
 # Manager
 from users.managers import CustomUserBaseManager
 
+def get_default_expires_OptToken():
+    return timezone.now() + timezone.timedelta(minutes=20)
+
+def get_default_expires_UrlCodeOtp():
+    return timezone.now() + timezone.timedelta(minutes=5)
+
+def generate_opt_token():
+    return secrets.token_hex(3)
+
+def generate_url_code_opt():
+    return secrets.token_hex(16)
+
 class CustomUser(AbstractUser):
     
     username = None
@@ -25,9 +37,9 @@ class CustomUser(AbstractUser):
 
 class OtpToken(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    otp_code = models.CharField(max_length=6, default=secrets.token_hex(3))
+    otp_code = models.CharField(max_length=6, default=generate_opt_token)
     otp_created_at = models.DateTimeField(auto_now_add=True)
-    otp_expires_at = models.DateTimeField(blank=True, null=True, default=timezone.now() + timezone.timedelta(minutes=20))
+    otp_expires_at = models.DateTimeField(blank=True, null=True, default=get_default_expires_OptToken)
     
     @classmethod
     def create_new_opt_code(cls, user):
@@ -63,9 +75,9 @@ class OtpToken(models.Model):
 
 class UrlCodeOtp(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    url_code = models.CharField(max_length=32, default=secrets.token_hex(16))
+    url_code = models.CharField(max_length=32, default=generate_url_code_opt)
     created_at = models.DateTimeField(auto_now_add=True)
-    expires_at = models.DateTimeField(blank=True, null=True, default=timezone.now() + timezone.timedelta(minutes=5))
+    expires_at = models.DateTimeField(blank=True, null=True, default=get_default_expires_UrlCodeOtp)
 
     @classmethod
     def create_url_code(cls, user):
