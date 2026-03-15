@@ -15,7 +15,7 @@ def get_default_expires_OptToken():
     return timezone.now() + timezone.timedelta(minutes=20)
 
 def get_default_expires_UrlCodeOtp():
-    return timezone.now() + timezone.timedelta(minutes=5)
+    return timezone.now() + timezone.timedelta(minutes=10)
 
 def generate_opt_token():
     return secrets.token_hex(3)
