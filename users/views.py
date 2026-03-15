@@ -149,14 +149,14 @@ class UpdatePassordView(View):
 
 
     def dispatch(self, request, *args, **kwargs):
-        email = kwargs.get('email')
-        code_on_url = kwargs.get('url_code')
+        self.email = kwargs.get('email')
+        self.code_on_url = kwargs.get('url_code')
 
         try:
-            user = get_user_model().objects.get(email=email)
-            user_last_url_code = UrlCodeOtp.objects.filter(user=user).last()
+            self.target_user = get_user_model().objects.get(email=self.email)
+            user_last_url_code = UrlCodeOtp.objects.filter(user=self.target_user).last()
             
-            if code_on_url != user_last_url_code.url_code or user_last_url_code.expires_at <= timezone.now():
+            if self.code_on_url != user_last_url_code.url_code or user_last_url_code.expires_at <= timezone.now():
                 raise (Http404('Page Not Found!'))
                 
         except get_user_model().DoesNotExist:
@@ -164,6 +164,21 @@ class UpdatePassordView(View):
             
         return super().dispatch(request, *args, **kwargs)
 
+    def post(self, request, *args, **kwargs):
+        form = SetPasswordForm(self.target_user, request.POST)
+
+        if form.is_valid():
+            form.save()
+
+            obj = UrlCodeOtp.objects.get(url_code=self.code_on_url)
+            obj.expires_at = timezone.now() - timezone.timedelta(minutes=1)
+            obj.save()
+
+            return redirect('login')
+        
+        return render(request, self.template_name, {'form': form})
+
+        
     def get(self, request, *args, **kwargs):
-        form = SetPasswordForm(self.request.user)
+        form = SetPasswordForm(self.target_user)
         return render(request, self.template_name, {'form': form})
